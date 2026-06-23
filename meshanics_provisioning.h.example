@@ -10,25 +10,25 @@
  *
  * In PRODUCTION this content lives in a data partition written at flash time
  * (WebSerial / USB), NOT compiled into the application image - so one generic
- * image serves every tenant. This header is the dev/bring-up convenience only.
+ * image serves every device. This header is the dev/bring-up convenience only.
  */
 #ifndef MESHANICS_PROVISIONING_H
 #define MESHANICS_PROVISIONING_H
 
-#define MESHANICS_CONTROL_PLANE_HOST "ota.<your-tenant>.meshanics.com"
+#define MESHANICS_CONTROL_PLANE_HOST "ota.meshanics.com"
 #define MESHANICS_CONTROL_PLANE_PORT 9444
 
 /* Server CA - the device authenticates the control plane against this before it
  * trusts anything received (prevents MITM of the enrollment channel). */
 static const char MESHANICS_SERVER_CA[] =
 	"-----BEGIN CERTIFICATE-----\n"
-	"... paste your tenant's control-plane CA from the panel ...\n"
+	"... paste your control-plane CA from the panel ...\n"
 	"-----END CERTIFICATE-----\n";
 
-/* One-time, provisioning-scoped claim credential (per tenant). Used once on first
- * boot to enroll a unique device identity. It has NO operational scope and is
- * gated by a server-side device allowlist. */
+/* One-time, provisioning-scoped claim credential. Used once on first boot to
+ * enroll a unique device identity. It has NO operational scope and is gated by a
+ * server-side device allowlist. */
 static const char MESHANICS_CLAIM_CRED[] =
-	"... paste your tenant's claim credential from the panel ...";
+	"... paste your claim credential from the panel ...";
 
 #endif /* MESHANICS_PROVISIONING_H */

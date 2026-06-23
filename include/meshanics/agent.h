@@ -6,10 +6,10 @@
  * first-boot enrollment, signed-manifest polling, OTA download, MCUboot A/B swap,
  * anti-rollback, boot-confirm/auto-revert, heartbeat, and metric reporting.
  *
- * Trust model (profile A, ADR-0029): the device verifies a compact update
- * manifest against the tenant's Ed25519 public key (provisioned at enrollment),
- * and MCUboot verifies the image signature (your key) at boot. The update payload
- * is end-to-end signed independent of transport. There is no insecure path.
+ * Trust model (profile A): the device verifies a compact update manifest against
+ * the Ed25519 public key it was provisioned with at enrollment, and MCUboot
+ * verifies the image signature (your key) at boot. The update payload is
+ * end-to-end signed independent of transport. There is no insecure path.
  */
 #ifndef MESHANICS_AGENT_H
 #define MESHANICS_AGENT_H

@@ -10,7 +10,7 @@ Every OTA update is verified **twice**, by two independent keys with two owners:
 | Key | Owner | Checked by | Proves |
 | --- | --- | --- | --- |
 | **MCUboot image-signing key** | **You (the customer)** | the bootloader, at boot | "this image was built by the authorized builder" |
-| **Meshanics manifest key** (per-tenant Ed25519) | **Meshanics** | the agent, before install | "this update was authorized for this fleet, and is fresh" |
+| **Meshanics manifest key** (Ed25519) | **Meshanics** | the agent, before install | "this update was authorized for this fleet, and is fresh" |
 
 You generate your MCUboot key once when you set up a product; its public half is
 fused into the bootloader at first flash, so **only firmware you built can ever
@@ -45,7 +45,7 @@ update-verification key can ride in on top of it. That is exactly what we do:
 - **Provisioned at enrollment, over the authenticated channel:** on first boot the
   device generates its **own** key pair, presents the claim credential over mutual
   TLS (server authenticated by the baked CA), and receives back its **unique
-  device certificate** *and* the **tenant manifest public key + key_id**. Both are
+  device certificate** *and* the **manifest public key + key_id**. Both are
   stored in encrypted NVS.
 
 Net effect: the update key *is* "set from the panel on device addition" — it just
@@ -53,16 +53,16 @@ arrives over a channel that is already trustworthy because of the small anchor.
 The key can also be **rotated** later without reflashing, because it lives in NVS,
 not in your image.
 
-## Three layers — nothing tenant-specific in your image
+## Three layers — nothing secret in your image
 
-| Layer | Contains | Per- | Written |
+| Layer | Contains | Scope | Written |
 | --- | --- | --- | --- |
 | **Application image** | Zephyr + the agent + **your code** | generic | your build, MCUboot-signed by you |
-| **Provisioning bundle** (data partition) | control-plane addr + server CA + claim credential | tenant | flash time (WebSerial/USB), from the panel |
-| **Identity (NVS)** | device key pair + device cert + manifest public key | device | first-boot enrollment |
+| **Provisioning bundle** (data partition) | control-plane addr + server CA + claim credential | your account | flash time (WebSerial/USB), from the panel |
+| **Identity (NVS)** | device key pair + device cert + manifest public key | per device | first-boot enrollment |
 
-Because the application image is generic and carries no tenant secrets, **one
-build serves every customer**, and there is no hand-edited key header to get wrong
+Because the application image is generic and carries no secrets, **one build
+serves every device**, and there is no hand-edited key header to get wrong
 (the failure mode that previously shipped an all-zeros placeholder key and made a
 board unable to verify anything). For local development you may instead compile a
 provisioning header (`meshanics_provisioning.h.example`); production uses the
@@ -70,10 +70,10 @@ data-partition path written at flash time.
 
 ## Verify the key is ours — the Trust Center
 
-The manifest-verification key your devices use is **Meshanics's per-tenant signing
-key**, and we make it independently checkable. Its authoritative value — the
+The manifest-verification key your devices use is **Meshanics's signing key** for
+your account, and we make it independently checkable. Its authoritative value — the
 `key_id` and public key — is published on the **Meshanics Trust Center** (the Trust
-page), alongside the TUF roots and your per-tenant CA.
+page), alongside the TUF roots and your account's CA.
 
 Your device reports the `key_id` it was provisioned with (its local status page,
 and the panel's device detail). Compare that `key_id` to the value on the Trust
@@ -95,7 +95,7 @@ or *delay* a download, which we mitigate separately (signed URLs, rate limits).
 
 - No `--insecure` / verification-optional path, in any build, ever.
 - Verify the signature **before** parsing untrusted manifest bytes.
-- Per-tenant isolation: a claim credential is scoped to provisioning only,
-  gated by a server-side device allowlist, revocable, and cannot impersonate an
-  already-provisioned device or reach another tenant.
+- Isolation: a claim credential is scoped to provisioning only, gated by a
+  server-side device allowlist, revocable, and cannot impersonate an
+  already-provisioned device or reach another account.
 - The anti-rollback counter — not the clock — is the freshness authority.

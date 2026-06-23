@@ -11,7 +11,8 @@ halt-on-metrics, and rollback - against the devices running your image.
 
 > Trust model: **profile
 > A** - full TUF stays in the control plane; the device verifies a compact signed
-> manifest against a tenant key (see `docs/SECURITY-AND-PROVISIONING.md`). There
+> manifest against a key it is provisioned with (see
+> `docs/SECURITY-AND-PROVISIONING.md`). There
 > is no `--insecure` path, ever.
 
 ## How it works (the developer model)
@@ -35,8 +36,8 @@ Add the module to your `west.yml`:
 ```yaml
 manifest:
   projects:
-    - name: meshanics-mcu-sdk
-      url: https://github.com/<your-org>/meshanics-mcu-sdk
+    - name: mcu-sdk
+      url: https://github.com/meshanics-com/mcu-sdk
       revision: main
       path: modules/meshanics
 ```
@@ -75,7 +76,7 @@ See `samples/sensor-node/` for a complete buildable example.
    produces a **provisioning bundle** (control-plane address + server CA + a
    one-time, provisioning-scoped claim credential). You never hand-edit keys.
 2. Build your firmware (`west build`) - the image is **generic**; it carries no
-   tenant secrets.
+   secrets.
 3. Flash the device: **WebSerial straight from the panel** (no toolchain), or
    over USB. The flasher writes your image **and** the provisioning bundle into a
    data partition.
@@ -95,8 +96,8 @@ device polls -> verifies -> downloads -> MCUboot swap -> confirm | rollback
 
 - **Your MCUboot image-signing key** - yours. Its public half is fused into the
   bootloader at first flash, so **only firmware you built can boot your devices**.
-- **The Meshanics manifest key** - ours, per-tenant. The device verifies every
-  update authorization against the tenant public key, which is **provisioned at
+- **The Meshanics manifest key** - ours. The device verifies every update
+  authorization against your account's public key, which is **provisioned at
   enrollment, not baked into your image**.
 - **Root of trust** is established out-of-band (a tiny anchor in the provisioning
   bundle), never fetched unauthenticated at runtime.
@@ -108,7 +109,7 @@ device polls -> verifies -> downloads -> MCUboot swap -> confirm | rollback
 
 ```
 include/meshanics/agent.h        the public API
-lib/                             agent implementation (extracted from the monorepo)
+lib/                             agent implementation (used via the public header)
 Kconfig, CMakeLists.txt          Zephyr module build wiring
 zephyr/module.yml                makes this a Zephyr module
 meshanics_provisioning.h.example dev provisioning config template

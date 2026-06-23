@@ -40,8 +40,8 @@ config MESHANICS_STATUS_HTTP
 	  Serves a small JSON status page (version, uptime, applied counter) for
 	  local diagnostics. Read-only; no control surface.
 
-# DRAM diet (ADR-0048 D1): a single TLS 1.3 session peaks ~45-55 KB. These are
-# sane defaults for an ESP32-S3; raise the heap if a full OTA download fails.
+# A single TLS 1.3 session peaks ~45-55 KB. This is a sane default for an
+# ESP32-S3; raise the heap if a full OTA download fails on your device.
 config MESHANICS_MBEDTLS_HEAP_SIZE
 	int "mbedTLS heap size (bytes)"
 	default 56000

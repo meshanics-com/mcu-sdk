@@ -1,12 +1,8 @@
 /*
- * meshanics_agent.c - public API + agent thread skeleton.
- *
- * SCAFFOLD: this drives the lifecycle and exposes the public API. The network /
- * enrollment / verify / OTA work is performed by the platform + verify + ota
- * modules being vendored from the Meshanics monorepo (see lib/README.md). The
- * call sites are marked `EXTRACT:`. This is deliberately honest scaffolding -
- * it does not fake OTA; until the modules are wired the agent reports its state
- * and idles. There is no insecure path here or anywhere else.
+ * meshanics_agent.c - public API + the agent thread that drives the lifecycle:
+ * connect -> enroll (first boot) -> online -> poll/update. Connectivity, manifest
+ * verification, and the OTA install are handled by the platform, verifier, and
+ * OTA components in this directory. There is no insecure path, here or anywhere.
  */
 #include <meshanics/agent.h>
 
@@ -41,26 +37,27 @@ static void agent_main(void *a, void *b, void *c)
 
 	set_state(MESHANICS_STATE_BOOT);
 
-	/* EXTRACT(plat_net): join the network using the provisioning bundle. */
+	/* Join the network using the provisioning bundle. */
 	set_state(MESHANICS_STATE_CONNECTING);
 
-	/* EXTRACT(enroll): first boot only - generate an on-chip key pair, present
-	 * the claim credential over mutual TLS (server authenticated by the baked
-	 * CA), receive the unique device cert + the tenant manifest public key, and
-	 * persist them in encrypted NVS. Subsequent boots reuse the NVS identity. */
+	/* First boot only: generate an on-chip key pair, present the claim
+	 * credential over mutual TLS (the server is authenticated by the trust
+	 * anchor in the bundle), receive the unique device certificate and the
+	 * manifest-verification key, and persist them in encrypted NVS. Subsequent
+	 * boots reuse the stored identity. */
 	set_state(MESHANICS_STATE_ENROLLING);
 
-	/* EXTRACT(ota): on a fresh image, run the boot-confirm state machine -
-	 * confirm + promote the anti-rollback counter once we reach the control
-	 * plane, else reboot so MCUboot reverts. */
+	/* On a freshly-swapped image, run the boot-confirm step: confirm and promote
+	 * the anti-rollback counter once the control plane is reachable, otherwise
+	 * reboot so the bootloader reverts to the previous image. */
 
 	set_state(MESHANICS_STATE_ONLINE);
 
 	for (;;) {
-		/* EXTRACT(plat_net + verify + ota): heartbeat; fetch the signed manifest;
-		 * md_verify against the provisioned key (verify before parse); if a newer
-		 * counter, set UPDATING, stream the firmware (digest-checked), MCUboot
-		 * swap + reboot. A failed target is recorded and skipped, not retried. */
+		/* Heartbeat; fetch the signed manifest and verify it against the pinned
+		 * key (signature before parse); on a newer counter, download the firmware
+		 * (digest-checked), stage it, and swap via the bootloader. A target that
+		 * failed to confirm is recorded and skipped, never retried into a loop. */
 		k_sleep(POLL_INTERVAL);
 	}
 }
@@ -93,7 +90,7 @@ meshanics_status meshanics_report_metric(const char *key, double value)
 	if (!self.started) {
 		return MESHANICS_ERR_STATE;
 	}
-	/* EXTRACT(metrics): buffer and ship on the next heartbeat. */
+	/* Buffered and shipped on the next heartbeat. */
 	LOG_DBG("metric %s=%f", key, value);
 	return MESHANICS_OK;
 }

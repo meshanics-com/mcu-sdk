@@ -1,8 +1,4 @@
-# Meshanics MCU agent SDK - Zephyr module build wiring.
-#
-# The verified on-device implementation is being extracted from the Meshanics
-# monorepo (agent/mcu/{verify,ota} + the plat_* seam) into lib/ here - see
-# lib/README.md for the vendoring map. Sources are added as they land.
+# Meshanics MCU agent SDK - Zephyr module build.
 
 if(CONFIG_MESHANICS_AGENT)
   zephyr_library()
@@ -12,10 +8,10 @@ if(CONFIG_MESHANICS_AGENT)
     lib/meshanics_agent.c
   )
 
-  # Extracted modules (uncomment as each is vendored in):
+  # Agent components (added as each lands):
   # zephyr_library_sources(
   #   lib/verify/manifest_verify.c
-  #   lib/verify/ed25519_fiat.c
+  #   lib/verify/ed25519.c
   #   lib/ota/ota.c
   #   lib/plat/plat_net.c
   #   lib/plat/plat_mcuboot.c
