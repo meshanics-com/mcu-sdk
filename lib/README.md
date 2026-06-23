@@ -11,9 +11,9 @@ the library through the header and `meshanics_agent_start()`.
 | platform layer | WiFi + mutually-authenticated TLS to the control plane, block-wise firmware download, staging to the inactive slot with a digest check, the MCUboot swap, and the persisted anti-rollback counters |
 
 Identity and the manifest-verification key are **not** compiled into the image:
-they are provisioned at first-boot enrollment and stored in encrypted NVS, from a
-minimal trust anchor in the provisioning bundle (see
-`../docs/SECURITY-AND-PROVISIONING.md`).
+they are provisioned at first-boot enrollment and stored in NVS (encrypted at
+rest by the device's flash encryption), from a minimal trust anchor in the
+provisioning bundle (see `../docs/SECURITY-AND-PROVISIONING.md`).
 
 The verifier is covered by a conformance suite so the device's notion of "a valid
 update" cannot drift — keep that coverage in place when changing it.

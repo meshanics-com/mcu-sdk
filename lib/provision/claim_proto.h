@@ -14,6 +14,7 @@
 #define MESHANICS_CLAIM_PROTO_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 /*
  * claim_build_request writes the JSON body for POST /provision/claim into out.
@@ -33,5 +34,19 @@ int claim_build_request(const char *claim_token, const char *device_id,
  * this agent receives - not a general JSON parser.
  */
 int json_extract_string(const char *json, const char *field, char *out, size_t cap);
+
+/*
+ * claim_ed25519_pub_from_pem decodes a PEM-encoded Ed25519 SubjectPublicKeyInfo
+ * (what GET /device/manifest-key returns in "public_key_pem") into the raw 32-byte
+ * public key the on-device manifest verifier pins.
+ *
+ * An Ed25519 SPKI is a fixed 44-byte DER structure: a 12-byte prefix
+ * (SEQUENCE / AlgorithmIdentifier with OID 1.3.101.112 / BIT STRING header)
+ * followed by the 32-byte key. This base64-decodes the body, checks that exact
+ * prefix, and copies the trailing 32 bytes - so the device never needs an X.509 /
+ * ASN.1 parser to consume its provisioned key. Returns 0 on success, or -1 if the
+ * PEM is malformed or is not a 32-byte Ed25519 key.
+ */
+int claim_ed25519_pub_from_pem(const char *pem, uint8_t out[32]);
 
 #endif /* MESHANICS_CLAIM_PROTO_H */

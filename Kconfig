@@ -1,20 +1,44 @@
 menuconfig MESHANICS_AGENT
 	bool "Meshanics MCU OTA agent"
+	# Connectivity + mutual TLS to the control plane.
 	select NETWORKING
 	select NET_TCP
 	select NET_SOCKETS
+	select NET_IPV4
+	select NET_DHCPV4
 	select WIFI
+	select NET_L2_WIFI_MGMT
+	select NET_MGMT
+	select NET_MGMT_EVENT
 	select MBEDTLS
+	select MBEDTLS_ENABLE_HEAP
 	select NET_SOCKETS_SOCKOPT_TLS
 	select TLS_CREDENTIALS
+	# A/B firmware updates via MCUboot + persisted state. (The image-manager
+	# backend MCUBOOT_IMG_MANAGER is a Kconfig choice, so it cannot be selected
+	# here; the sample enables it in prj.conf.)
 	select BOOTLOADER_MCUBOOT
 	select IMG_MANAGER
+	select FLASH
+	select FLASH_MAP
 	select STREAM_FLASH
 	select NVS
 	select REBOOT
+	# On-chip enrollment: a hardware entropy source + device id for the CSR, and
+	# the mbedTLS writers that turn the PSA-generated key into a CSR/PEM.
+	select ENTROPY_GENERATOR
+	select HWINFO
+	select MBEDTLS_PEM_PARSE_C
+	select MBEDTLS_PK_WRITE_C
+	select MBEDTLS_PEM_WRITE_C
+	select MBEDTLS_X509_CSR_WRITE_C
 	help
 	  Secure over-the-air updates, fleet identity, and automatic rollback for
 	  this firmware (trust profile A). Call meshanics_agent_start() from main().
+
+	  The mbedTLS cipher/curve PROFILE (TLS 1.3 suites, P-256/P-384, SNI, heap
+	  size) is not selected here because it is sized per device; copy the proven
+	  block from samples/sensor-node/prj.conf.
 
 if MESHANICS_AGENT
 
@@ -27,7 +51,11 @@ config MESHANICS_FW_VERSION
 
 config MESHANICS_AGENT_THREAD_STACK_SIZE
 	int "Agent thread stack size (bytes)"
-	default 8192
+	default 24576
+	help
+	  The agent thread runs first-boot enrollment (on-chip key generation + CSR +
+	  TLS) and the steady-state OTA path. 24 KB covers the enrollment peak; it can
+	  be trimmed once a device never re-enrolls.
 
 config MESHANICS_POLL_INTERVAL_SEC
 	int "Control-plane poll interval (seconds)"
@@ -37,11 +65,12 @@ config MESHANICS_STATUS_HTTP
 	bool "Expose a read-only HTTP status endpoint on port 80"
 	default y
 	help
-	  Serves a small JSON status page (version, uptime, applied counter) for
-	  local diagnostics. Read-only; no control surface.
+	  Serves a small JSON status page (version, uptime, applied counter, pinned
+	  key_id) for local diagnostics. Read-only; no control surface.
 
 # A single TLS 1.3 session peaks ~45-55 KB. This is a sane default for an
-# ESP32-S3; raise the heap if a full OTA download fails on your device.
+# ESP32-S3; raise the heap if a full OTA download fails on your device. The
+# sample sets CONFIG_MBEDTLS_HEAP_SIZE to this value.
 config MESHANICS_MBEDTLS_HEAP_SIZE
 	int "mbedTLS heap size (bytes)"
 	default 56000

@@ -1,0 +1,29 @@
+# Per-deployment provisioning config — contains the WiFi PSK and a one-time
+# claim credential. NEVER commit this; copy meshanics_provisioning.h.example and
+# fill it in locally. The .example template is the only version that is tracked.
+meshanics_provisioning.h
+**/meshanics_provisioning.h
+
+# Legacy per-device baked credentials (pre-enrollment model). The provisioned
+# identity now lives in NVS; these should never appear, but guard anyway.
+device_creds.h
+**/device_creds.h
+pinned_key.h
+**/pinned_key.h
+claim_config.h
+**/claim_config.h
+
+# Zephyr / west build output
+build/
+**/build/
+twister-out/
+*.o
+*.a
+
+# Host test binaries
+lib/provision/test/*_test
+lib/provision/test/a.out
+
+# Editor / OS cruft
+.DS_Store
+*.swp

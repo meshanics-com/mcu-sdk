@@ -75,9 +75,10 @@ typedef struct {
 meshanics_status meshanics_agent_start(const meshanics_config *cfg);
 
 /**
- * Report a named numeric metric to the fleet. Metrics feed rollout health/halt
- * rules and dashboards. Cheap and non-blocking (buffered, shipped on the next
- * heartbeat). Safe to call from your application thread.
+ * Record a named numeric metric. Cheap and non-blocking; safe to call from your
+ * application thread. Today metrics are kept for local diagnostics; fleet-side
+ * reporting (feeding rollout health/halt rules) lands with the metrics heartbeat
+ * channel. The call is stable, so instrument your app now.
  */
 meshanics_status meshanics_report_metric(const char *key, double value);
 

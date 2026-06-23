@@ -1,34 +1,65 @@
 /*
- * meshanics_provisioning.h - DEVELOPMENT provisioning config (copy to
- * meshanics_provisioning.h and fill in from the panel: Product -> Provisioning).
+ * meshanics_provisioning.h - DEVELOPMENT provisioning config.
  *
- * This is the minimal, out-of-band ROOT OF TRUST: enough for the device to
- * authenticate the control plane and enroll. It deliberately does NOT contain the
- * update-verification (manifest) key or any per-device identity - those are
- * provisioned at first-boot enrollment and stored in NVS (see
- * docs/SECURITY-AND-PROVISIONING.md).
+ * Copy this file to `meshanics_provisioning.h` (gitignored) on your application's
+ * include path and fill it in from the panel: Devices -> "+ Microcontroller
+ * batch". It is the minimal, out-of-band ROOT OF TRUST - enough for a
+ * factory-fresh device to authenticate the control plane and enroll itself.
+ *
+ * It deliberately does NOT contain any per-device identity or the
+ * update-verification (manifest) key: the device generates its own key pair on
+ * first boot, receives a unique certificate and the manifest key from the control
+ * plane, and stores them in NVS. See docs/SECURITY-AND-PROVISIONING.md.
  *
  * In PRODUCTION this content lives in a data partition written at flash time
  * (WebSerial / USB), NOT compiled into the application image - so one generic
- * image serves every device. This header is the dev/bring-up convenience only.
+ * image serves every device. This header is the dev/bring-up convenience only,
+ * and it carries the WiFi PSK and a claim credential, so keep it out of version
+ * control (the SDK .gitignore already excludes meshanics_provisioning.h).
  */
 #ifndef MESHANICS_PROVISIONING_H
 #define MESHANICS_PROVISIONING_H
 
-#define MESHANICS_CONTROL_PLANE_HOST "ota.meshanics.com"
-#define MESHANICS_CONTROL_PLANE_PORT 9444
+/* --- Network to join ------------------------------------------------------- */
+#define MESHANICS_WIFI_SSID  "your-ssid"
+#define MESHANICS_WIFI_PSK   "your-password"
 
-/* Server CA - the device authenticates the control plane against this before it
- * trusts anything received (prevents MITM of the enrollment channel). */
+/* --- Enrollment hop: the public control-plane edge ------------------------- */
+/* The device authenticates this endpoint against MESHANICS_CLAIM_CA before
+ * presenting the claim token, then receives its unique device certificate.
+ * The proven path dials by IP and sends MESHANICS_CLAIM_HOST as SNI. */
+#define MESHANICS_CLAIM_HOST "panel.meshanics.com"
+#define MESHANICS_CLAIM_IP   "203.0.113.10"   /* current edge IP (see panel) */
+#define MESHANICS_CLAIM_PORT 443
+
+/* The public root that signs the edge's certificate (paste from the panel, or
+ * `openssl s_client -connect <ip>:443 -servername panel.meshanics.com -showcerts`
+ * and take the top-most/root certificate). */
+static const char MESHANICS_CLAIM_CA[] =
+	"-----BEGIN CERTIFICATE-----\n"
+	"... paste the public root for the claim edge ...\n"
+	"-----END CERTIFICATE-----\n";
+
+/* One-time, provisioning-scoped claim credential from the panel. It has NO
+ * operational scope and is gated by a server-side allowlist/use count. */
+#define MESHANICS_CLAIM_TOKEN "mesh_claim_..."
+
+/* --- Operational hops: the device-facing control plane (mutual TLS) --------- */
+/* One host serves both ports; the device authenticates it against your
+ * control-plane CA below using the certificate it received at enrollment. */
+#define MESHANICS_SERVER_HOST   "ota.meshanics.com"
+#define MESHANICS_SERVER_IP     "203.0.113.20"   /* current control-plane IP */
+#define MESHANICS_ARTIFACT_PORT 9444   /* signed manifest, manifest key, firmware */
+#define MESHANICS_FLEET_PORT    9445   /* device register + heartbeat */
+
+/* Your control-plane CA (paste from the panel: download ca.crt). */
 static const char MESHANICS_SERVER_CA[] =
 	"-----BEGIN CERTIFICATE-----\n"
 	"... paste your control-plane CA from the panel ...\n"
 	"-----END CERTIFICATE-----\n";
 
-/* One-time, provisioning-scoped claim credential. Used once on first boot to
- * enroll a unique device identity. It has NO operational scope and is gated by a
- * server-side device allowlist. */
-static const char MESHANICS_CLAIM_CRED[] =
-	"... paste your claim credential from the panel ...";
+/* --- The update stream this device tracks ---------------------------------- */
+#define MESHANICS_ARTIFACT_NAME  "your-firmware-artifact-name"
+#define MESHANICS_TARGET_PROFILE "esp32-s3"
 
 #endif /* MESHANICS_PROVISIONING_H */

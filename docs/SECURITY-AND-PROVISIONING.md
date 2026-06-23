@@ -46,7 +46,9 @@ update-verification key can ride in on top of it. That is exactly what we do:
   device generates its **own** key pair, presents the claim credential over mutual
   TLS (server authenticated by the baked CA), and receives back its **unique
   device certificate** *and* the **manifest public key + key_id**. Both are
-  stored in encrypted NVS.
+  stored in NVS, encrypted at rest by the device's flash encryption — enable
+  ESP32-S3 flash encryption for production builds, which transparently encrypts
+  the NVS partition (the device private key never leaves the chip in the clear).
 
 Net effect: the update key *is* "set from the panel on device addition" — it just
 arrives over a channel that is already trustworthy because of the small anchor.

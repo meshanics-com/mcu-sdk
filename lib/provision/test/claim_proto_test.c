@@ -67,6 +67,44 @@ int main(void)
 	CHECK(json_extract_string(tricky, "key_id", v, sizeof(v)) == 4 && strcmp(v, "real") == 0,
 	      "matches the key, not a value substring");
 
+	/* Ed25519 SPKI PEM -> raw 32 bytes. The vector below is a valid SPKI whose
+	 * key is the bytes 0x00..0x1f, so the decode is checkable byte-for-byte. */
+	const char *ed_pem =
+		"-----BEGIN PUBLIC KEY-----\n"
+		"MCowBQYDK2VwAyEAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=\n"
+		"-----END PUBLIC KEY-----\n";
+	uint8_t pub[32];
+	int ok = claim_ed25519_pub_from_pem(ed_pem, pub);
+	CHECK(ok == 0, "ed25519 SPKI PEM decodes");
+	int seq_ok = 1;
+	for (int i = 0; i < 32; i++) {
+		if (pub[i] != (uint8_t)i) {
+			seq_ok = 0;
+		}
+	}
+	CHECK(seq_ok, "decoded key bytes are 0x00..0x1f");
+
+	/* The real path: extract public_key_pem out of a manifest-key response (escaped
+	 * newlines) and decode it - the exact two steps the agent runs at enrollment. */
+	const char *mk_full =
+		"{\"alg\":\"ed25519\",\"key_id\":\"abc123de\",\"public_key_pem\":"
+		"\"-----BEGIN PUBLIC KEY-----\\n"
+		"MCowBQYDK2VwAyEAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=\\n"
+		"-----END PUBLIC KEY-----\\n\"}";
+	char pem_buf[256];
+	CHECK(json_extract_string(mk_full, "public_key_pem", pem_buf, sizeof(pem_buf)) > 0,
+	      "public_key_pem extracted from manifest-key response");
+	uint8_t pub2[32];
+	CHECK(claim_ed25519_pub_from_pem(pem_buf, pub2) == 0 && memcmp(pub, pub2, 32) == 0,
+	      "extracted PEM decodes to the same key");
+
+	/* A non-Ed25519 / malformed key is rejected, not silently truncated. */
+	uint8_t junk[32];
+	CHECK(claim_ed25519_pub_from_pem(
+		"-----BEGIN PUBLIC KEY-----\nQUJD\n-----END PUBLIC KEY-----\n", junk) == -1,
+	      "too-short SPKI rejected");
+	CHECK(claim_ed25519_pub_from_pem("not a pem at all", junk) == -1, "non-PEM rejected");
+
 	if (failures == 0) {
 		printf("RESULT: PASS (claim_proto)\n");
 		return 0;
