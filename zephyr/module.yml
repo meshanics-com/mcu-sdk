@@ -1,0 +1,4 @@
+name: meshanics
+build:
+  cmake: .
+  kconfig: Kconfig
