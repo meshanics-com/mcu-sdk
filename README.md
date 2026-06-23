@@ -9,10 +9,7 @@ library and call **one function**. You build and sign **your own** firmware. Fro
 then on, Meshanics runs the *fleet update lifecycle* — signed rollouts, canary,
 halt-on-metrics, and rollback — against the devices running your image.
 
-> Status: **early scaffold** (the public API + build wiring + docs). The verified
-> on-device implementation (manifest verify, OTA install, MCUboot swap, rollback)
-> lives in the Meshanics monorepo under `agent/mcu/{verify,ota}` and the
-> `plat_*` seam, and is being extracted into `lib/` here. Trust model: **profile
+> Trust model: **profile
 > A** — full TUF stays in the control plane; the device verifies a compact signed
 > manifest against a tenant key (see `docs/SECURITY-AND-PROVISIONING.md`). There
 > is no `--insecure` path, ever.
