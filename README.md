@@ -17,8 +17,7 @@ halt-on-metrics, and rollback - against the devices running your image.
 ## How it works (the developer model)
 
 A microcontroller is not Linux: there are no containers and no dynamic loading -
-Zephyr, this agent, and your code are linked into **one firmware image**. So the
-model is an **SDK**, exactly like Golioth / Mender-MCU / Memfault:
+Zephyr, this agent, and your code are linked into **one firmware image**. 
 
 1. **You** write your business logic and link this agent as a Zephyr module.
 2. **You** build and sign your firmware with **your own** MCUboot image key.
