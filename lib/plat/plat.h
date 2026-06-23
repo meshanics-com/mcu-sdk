@@ -51,9 +51,19 @@ int plat_register(void);
  * report status for rollouts: the running firmware version,
  * the applied anti-rollback counter, and the agent's self-probe result (the
  * control plane uses these to advance/halt MCU rollout waves). Returns 1 = ok,
- * 0 = control plane reports it decommissioned (stop), <0 on a transient error. */
+ * 0 = control plane reports it decommissioned (stop), <0 on a transient error.
+ *
+ * If the heartbeat response carries a pending log request, its id is written to
+ * log_req_id (NUL-terminated, empty if none); the caller fulfils it with
+ * plat_net_upload_logs. Pass NULL/0 to ignore log requests. */
 int plat_heartbeat(const char *applied_version, uint64_t applied_counter,
-		   int probe_healthy, const char *probe_detail);
+		   int probe_healthy, const char *probe_detail,
+		   char *log_req_id, size_t log_req_id_cap);
+
+/* POST a captured log bundle to /device/logs/{request_id} (mutual TLS) to fulfil
+ * an operator's log request. body/len is the plain-text log snapshot. Returns 0
+ * on success (HTTP 204/200), <0 on a transport/HTTP error. */
+int plat_net_upload_logs(const char *request_id, const char *body, size_t len);
 
 /* GET the control plane /device/manifest over mutually-authenticated TLS for this
  * device's stream. Writes the raw SignedManifest bytes into buf. Returns the

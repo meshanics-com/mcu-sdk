@@ -32,6 +32,9 @@ menuconfig MESHANICS_AGENT
 	select MBEDTLS_PK_WRITE_C
 	select MBEDTLS_PEM_WRITE_C
 	select MBEDTLS_X509_CSR_WRITE_C
+	# On-device log capture (ring buffer shipped to the control plane on request).
+	select LOG
+	select LOG_OUTPUT
 	help
 	  Secure over-the-air updates, fleet identity, and automatic rollback for
 	  this firmware (trust profile A). Call meshanics_agent_start() from main().
@@ -61,12 +64,30 @@ config MESHANICS_POLL_INTERVAL_SEC
 	int "Control-plane poll interval (seconds)"
 	default 30
 
+config MESHANICS_LOG_BUF_SIZE
+	int "On-device log ring buffer (bytes)"
+	default 4096
+	help
+	  Size of the in-RAM ring buffer that captures the agent's recent log output.
+	  When an operator requests this device's log from the console, the agent
+	  ships the most recent bytes; older lines roll off. Larger = more history,
+	  more RAM.
+
 config MESHANICS_STATUS_HTTP
-	bool "Expose a read-only HTTP status endpoint on port 80"
+	bool "Expose a read-only HTTP status endpoint"
 	default y
 	help
 	  Serves a small JSON status page (version, uptime, applied counter, pinned
 	  key_id) for local diagnostics. Read-only; no control surface.
+
+config MESHANICS_STATUS_HTTP_PORT
+	int "Status endpoint TCP port"
+	default 8080
+	depends on MESHANICS_STATUS_HTTP
+	help
+	  Port for the read-only status endpoint. Defaults to 8080 rather than 80
+	  because many ESP32 applications already serve their own local web UI on
+	  port 80; 8080 also matches the rollout form's default health-probe target.
 
 # A single TLS 1.3 session peaks ~45-55 KB. This is a sane default for an
 # ESP32-S3; raise the heap if a full OTA download fails on your device. The

@@ -29,6 +29,7 @@
 #include "provisioning.h"
 #include "identity.h"
 #include "enroll.h"
+#include "applog.h"
 
 LOG_MODULE_REGISTER(meshanics_agent, LOG_LEVEL_INF);
 
@@ -36,7 +37,7 @@ LOG_MODULE_REGISTER(meshanics_agent, LOG_LEVEL_INF);
  * HTTP status server is serviced every tick so the page stays responsive. */
 #define TICK K_SECONDS(1)
 #define POLL_TICKS CONFIG_MESHANICS_POLL_INTERVAL_SEC
-#define HTTP_PORT 80
+#define HTTP_PORT CONFIG_MESHANICS_STATUS_HTTP_PORT
 
 /* Bounds the received SignedManifest. The real one is ~150 bytes. */
 #define MANIFEST_BUF 1024
@@ -265,6 +266,20 @@ static void http_serve_pending(int listener)
 	}
 }
 
+/* ship_logs fulfils an operator log request by uploading the agent's recent log
+ * ring buffer to the control plane. Best-effort: a failure just means the next
+ * request retries. */
+static void ship_logs(const char *request_id)
+{
+	static char logbuf[CONFIG_MESHANICS_LOG_BUF_SIZE];
+	size_t n = applog_snapshot(logbuf, sizeof(logbuf));
+	if (plat_net_upload_logs(request_id, logbuf, n) == 0) {
+		LOG_INF("shipped %u bytes of agent log", (unsigned)n);
+	} else {
+		LOG_WRN("agent log upload failed");
+	}
+}
+
 /* establish_identity enrolls on first boot, or loads the stored identity on
  * subsequent boots, and wires the pinned manifest key. Returns 0 on success. */
 static int establish_identity(const struct meshanics_provisioning *prov)
@@ -353,10 +368,15 @@ static void agent_main(void *a, void *b, void *c)
 				healthy = 0;
 			}
 			const char *detail = healthy ? "status-server up" : "health check failed";
-			int hb = plat_heartbeat(self.version, plat_applied_counter(), healthy, detail);
+			char log_req[48];
+			int hb = plat_heartbeat(self.version, plat_applied_counter(), healthy, detail,
+						log_req, sizeof(log_req));
 			if (hb == 0) {
 				LOG_WRN("control plane reports decommissioned - stopping");
 				break;
+			}
+			if (hb > 0 && log_req[0]) {
+				ship_logs(log_req); /* operator requested this device's log */
 			}
 			poll_once(); /* OTA check; does not return if it swaps + reboots */
 		}

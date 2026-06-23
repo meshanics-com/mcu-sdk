@@ -20,6 +20,7 @@ if(CONFIG_MESHANICS_AGENT)
     lib/ota
     lib/plat
     lib/provision
+    lib/applog
     lib/verify/third_party/fiat
     lib/verify/third_party/tinycrypt/include
     ${APPLICATION_SOURCE_DIR}
@@ -31,6 +32,8 @@ if(CONFIG_MESHANICS_AGENT)
     lib/verify/manifest_verify.c
     lib/verify/ed25519_fiat.c
     lib/ota/ota.c
+
+    lib/applog/applog.c
 
     lib/plat/plat_net.c
     lib/plat/plat_mcuboot.c

@@ -14,6 +14,7 @@
 #include "plat.h"
 #include "plat_net.h"
 #include "ota.h"
+#include "claim_proto.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/net/net_if.h>
@@ -274,8 +275,12 @@ int plat_register(void)
 }
 
 int plat_heartbeat(const char *applied_version, uint64_t applied_counter,
-		   int probe_healthy, const char *probe_detail)
+		   int probe_healthy, const char *probe_detail,
+		   char *log_req_id, size_t log_req_id_cap)
 {
+	if (log_req_id && log_req_id_cap) {
+		log_req_id[0] = '\0';
+	}
 	char body[256];
 	if (ota_heartbeat_json(body, sizeof(body), SDK_AGENT_VERSION, applied_version,
 			       applied_counter, probe_healthy, probe_detail) < 0) {
@@ -293,7 +298,50 @@ int plat_heartbeat(const char *applied_version, uint64_t applied_counter,
 	if (strstr((char *)resp, "\"decommissioned\":true")) {
 		return 0;
 	}
+	/* ...and a pending log request as {"log_requests":[{"request_id":"<uuid>",...}]}.
+	 * Surface the first id so the agent can ship its log buffer. */
+	if (log_req_id && log_req_id_cap &&
+	    json_extract_string((char *)resp, "request_id", log_req_id, log_req_id_cap) <= 0) {
+		log_req_id[0] = '\0';
+	}
 	return 1;
+}
+
+int plat_net_upload_logs(const char *request_id, const char *body, size_t len)
+{
+	if (!request_id || !request_id[0]) {
+		return -3;
+	}
+	int fd = tls_connect(cfg->fleet_port);
+	if (fd < 0) {
+		return fd;
+	}
+	char hdr[256];
+	int hl = snprintf(hdr, sizeof(hdr),
+		"POST /device/logs/%s?status=ok HTTP/1.1\r\nHost: %s\r\n"
+		"Content-Type: text/plain\r\nContent-Length: %u\r\n"
+		"Connection: close\r\n\r\n",
+		request_id, cfg->server_host, (unsigned)len);
+	if (hl <= 0 || hl >= (int)sizeof(hdr) || zsock_send(fd, hdr, (size_t)hl, 0) < 0) {
+		zsock_close(fd);
+		return -3;
+	}
+	for (size_t off = 0; off < len;) {
+		ssize_t s = zsock_send(fd, body + off, len - off, 0);
+		if (s <= 0) {
+			zsock_close(fd);
+			return -3;
+		}
+		off += (size_t)s;
+	}
+	uint8_t resp[256];
+	int total = recv_all(fd, resp, sizeof(resp));
+	zsock_close(fd);
+	if (total < 0) {
+		return -3;
+	}
+	int sc = http_status(resp, (size_t)total);
+	return (sc == 204 || sc == 200) ? 0 : -6;
 }
 
 int plat_net_firmware_download(uint64_t expect_size, plat_fw_sink sink, void *ctx)
