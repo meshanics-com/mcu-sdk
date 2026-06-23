@@ -281,9 +281,16 @@ int plat_heartbeat(const char *applied_version, uint64_t applied_counter,
 	if (log_req_id && log_req_id_cap) {
 		log_req_id[0] = '\0';
 	}
+	/* If a target was swapped in and reverted (failed counter set), report which
+	 * version, so the rollout can mark this device's assignment reverted. */
+	char revbuf[32];
+	const char *reverted = "";
+	if (plat_failed_counter() != 0 && plat_attempted_version(revbuf, sizeof(revbuf)) == 0) {
+		reverted = revbuf;
+	}
 	char body[256];
 	if (ota_heartbeat_json(body, sizeof(body), SDK_AGENT_VERSION, applied_version,
-			       applied_counter, probe_healthy, probe_detail) < 0) {
+			       applied_counter, probe_healthy, probe_detail, reverted) < 0) {
 		return -3;
 	}
 	uint8_t resp[512];

@@ -95,4 +95,12 @@ uint64_t plat_failed_counter(void);
 int plat_store_failed(uint64_t counter);
 int plat_clear_failed(void);
 
+/* The firmware version the agent last staged + swapped, persisted at commit. If
+ * MCUboot then reverts that image, this is the version that reverted, reported on
+ * the heartbeat so the control plane can mark this device's rollout assignment
+ * reverted. Cleared when an update applies healthy. */
+int plat_store_attempted_version(const char *version);
+int plat_attempted_version(char *out, size_t cap); /* 0 on success, <0 if none */
+int plat_clear_attempted_version(void);
+
 #endif /* MESHANICS_PLAT_H */

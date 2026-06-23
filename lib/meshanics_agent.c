@@ -106,6 +106,14 @@ static void poll_once(void)
 		set_state(MESHANICS_STATE_ONLINE);
 		return;
 	}
+	/* Record the version being swapped in, so that if MCUboot reverts it the next
+	 * boot can report which version reverted. m.artifact_version points into buf
+	 * and is not NUL-terminated. */
+	char ver[32];
+	size_t vl = m.artifact_version_len < sizeof(ver) - 1 ? m.artifact_version_len : sizeof(ver) - 1;
+	memcpy(ver, m.artifact_version, vl);
+	ver[vl] = '\0';
+	plat_store_attempted_version(ver);
 	plat_commit_and_reboot(m.rollback_counter); /* does not return on success */
 	LOG_ERR("commit/reboot failed");
 	set_state(MESHANICS_STATE_ONLINE);
@@ -128,6 +136,9 @@ static void boot_confirm(int net_ok)
 		}
 		if (act.promote) {
 			plat_store_counter(act.new_applied);
+			/* Applied healthy: this was not a revert, so drop the attempted-version
+			 * record (nothing to report). */
+			plat_clear_attempted_version();
 			LOG_INF("anti-rollback counter promoted to %llu",
 				(unsigned long long)act.new_applied);
 		}
@@ -136,11 +147,14 @@ static void boot_confirm(int net_ok)
 		}
 		if (act.record_failed) {
 			plat_store_failed(act.failed_counter);
+			/* Keep the attempted-version record: it is the version that reverted,
+			 * reported on the heartbeat until a newer image applies healthy. */
 			LOG_WRN("target counter %llu reverted; will not re-attempt it",
 				(unsigned long long)act.failed_counter);
 		}
 		if (act.clear_failed) {
 			plat_clear_failed();
+			plat_clear_attempted_version();
 		}
 		return;
 	}

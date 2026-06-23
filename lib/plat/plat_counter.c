@@ -21,6 +21,9 @@
  * (it never booted healthy). Recorded so the agent does not re-attempt the same
  * bad target in a reboot loop; cleared once a newer image boots healthy. */
 #define FAILED_NVS_ID 3
+/* The firmware version string of the target last staged + swapped (persisted at
+ * commit). If that image reverts, this is the version to report as reverted. */
+#define ATTEMPTED_VERSION_NVS_ID 4
 
 /* read_counter returns the stored u64 for `id`, or 0 if nothing is stored. */
 static uint64_t read_counter(uint16_t id)
@@ -68,4 +71,30 @@ int plat_store_failed(uint64_t counter)
 int plat_clear_failed(void)
 {
 	return plat_store_delete(FAILED_NVS_ID);
+}
+
+int plat_store_attempted_version(const char *version)
+{
+	if (version == NULL) {
+		return -1;
+	}
+	return plat_store_write(ATTEMPTED_VERSION_NVS_ID, version, strlen(version));
+}
+
+int plat_attempted_version(char *out, size_t cap)
+{
+	if (out == NULL || cap == 0) {
+		return -1;
+	}
+	int n = plat_store_read(ATTEMPTED_VERSION_NVS_ID, out, cap - 1);
+	if (n <= 0 || n >= (int)cap) {
+		return -1;
+	}
+	out[n] = '\0';
+	return 0;
+}
+
+int plat_clear_attempted_version(void)
+{
+	return plat_store_delete(ATTEMPTED_VERSION_NVS_ID);
 }

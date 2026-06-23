@@ -56,14 +56,16 @@ struct ota_boot_action {
 struct ota_boot_action ota_plan_boot(int img_confirmed, uint64_t applied, uint64_t pending);
 
 /* ota_heartbeat_json builds the device heartbeat request body: the agent
- * version, the firmware version the device is running (its own compile-time
- * APP_VERSION), the applied anti-rollback counter, and the agent's self-probe
- * result. Writes a NUL-terminated JSON object into out and returns
- * its length, or -1 if it does not fit. detail is bounded and sanitised (quotes,
- * backslashes and control chars become spaces) so a stray value cannot break the
- * JSON; the version strings are controlled compile-time constants. */
+ * version, the firmware version the device is running, the applied anti-rollback
+ * counter, the agent's self-probe result, and - if the device just had a target
+ * reverted by MCUboot - the reverted_version, so the control plane can mark this
+ * device's rollout assignment reverted. Writes a NUL-terminated JSON object into
+ * out and returns its length, or -1 if it does not fit. detail and
+ * reverted_version are bounded and sanitised (quotes, backslashes and control
+ * chars become spaces) so a stray value cannot break the JSON. Pass NULL/"" for
+ * reverted_version to omit it. */
 int ota_heartbeat_json(char *out, size_t cap, const char *agent_version,
 		       const char *applied_version, uint64_t applied_counter,
-		       int healthy, const char *detail);
+		       int healthy, const char *detail, const char *reverted_version);
 
 #endif /* MESHANICS_MCU_OTA_H */

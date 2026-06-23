@@ -98,9 +98,21 @@ struct ota_boot_action ota_plan_boot(int img_confirmed, uint64_t applied, uint64
 	return a;
 }
 
+/* sanitise copies up to cap-1 bytes of s into out, replacing characters that
+ * would break a JSON string (quote, backslash, control chars) with spaces. */
+static void sanitise(char *out, size_t cap, const char *s)
+{
+	size_t i = 0;
+	for (; s != NULL && s[i] != '\0' && i < cap - 1; i++) {
+		char c = s[i];
+		out[i] = (c == '"' || c == '\\' || c < 0x20) ? ' ' : c;
+	}
+	out[i] = '\0';
+}
+
 int ota_heartbeat_json(char *out, size_t cap, const char *agent_version,
 		       const char *applied_version, uint64_t applied_counter,
-		       int healthy, const char *detail)
+		       int healthy, const char *detail, const char *reverted_version)
 {
 	if (out == NULL || cap == 0) {
 		return -1;
@@ -111,24 +123,28 @@ int ota_heartbeat_json(char *out, size_t cap, const char *agent_version,
 	if (applied_version == NULL) {
 		applied_version = "";
 	}
-	if (detail == NULL) {
-		detail = "";
-	}
-	/* Bound + sanitise the probe detail: a stray quote/backslash/control char
-	 * would otherwise break the JSON the control plane parses. */
 	char d[64];
-	size_t dl = 0;
-	for (; detail[dl] != '\0' && dl < sizeof(d) - 1; dl++) {
-		char c = detail[dl];
-		d[dl] = (c == '"' || c == '\\' || c < 0x20) ? ' ' : c;
-	}
-	d[dl] = '\0';
+	sanitise(d, sizeof(d), detail);
 
-	int n = snprintf(out, cap,
-		"{\"agent_version\":\"%s\",\"applied_version\":\"%s\","
-		"\"applied_counter\":%llu,\"probe\":{\"healthy\":%s,\"detail\":\"%s\"}}",
-		agent_version, applied_version, (unsigned long long)applied_counter,
-		healthy ? "true" : "false", d);
+	int n;
+	if (reverted_version != NULL && reverted_version[0] != '\0') {
+		/* The device swapped this version in and MCUboot reverted it; report it so
+		 * the rollout marks this device's assignment reverted. */
+		char rv[32];
+		sanitise(rv, sizeof(rv), reverted_version);
+		n = snprintf(out, cap,
+			"{\"agent_version\":\"%s\",\"applied_version\":\"%s\","
+			"\"applied_counter\":%llu,\"reverted_version\":\"%s\","
+			"\"probe\":{\"healthy\":%s,\"detail\":\"%s\"}}",
+			agent_version, applied_version, (unsigned long long)applied_counter,
+			rv, healthy ? "true" : "false", d);
+	} else {
+		n = snprintf(out, cap,
+			"{\"agent_version\":\"%s\",\"applied_version\":\"%s\","
+			"\"applied_counter\":%llu,\"probe\":{\"healthy\":%s,\"detail\":\"%s\"}}",
+			agent_version, applied_version, (unsigned long long)applied_counter,
+			healthy ? "true" : "false", d);
+	}
 	if (n < 0 || (size_t)n >= cap) {
 		return -1;
 	}
