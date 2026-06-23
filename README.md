@@ -1,22 +1,22 @@
-# Meshanics MCU Agent SDK
+ Meshanics MCU Agent SDK
 
 A small Zephyr library that gives any ESP32-class firmware **secure over-the-air
-updates, fleet identity, and automatic rollback** — without you writing any of
+updates, fleet identity, and automatic rollback** - without you writing any of
 the update machinery.
 
 You write your application (sensor automation, control logic). You add this
 library and call **one function**. You build and sign **your own** firmware. From
-then on, Meshanics runs the *fleet update lifecycle* — signed rollouts, canary,
-halt-on-metrics, and rollback — against the devices running your image.
+then on, Meshanics runs the *fleet update lifecycle* - signed rollouts, canary,
+halt-on-metrics, and rollback - against the devices running your image.
 
 > Trust model: **profile
-> A** — full TUF stays in the control plane; the device verifies a compact signed
+> A** - full TUF stays in the control plane; the device verifies a compact signed
 > manifest against a tenant key (see `docs/SECURITY-AND-PROVISIONING.md`). There
 > is no `--insecure` path, ever.
 
 ## How it works (the developer model)
 
-A microcontroller is not Linux: there are no containers and no dynamic loading —
+A microcontroller is not Linux: there are no containers and no dynamic loading -
 Zephyr, this agent, and your code are linked into **one firmware image**. So the
 model is an **SDK**, exactly like Golioth / Mender-MCU / Memfault:
 
@@ -27,7 +27,7 @@ model is an **SDK**, exactly like Golioth / Mender-MCU / Memfault:
    signs the update manifest and rolls it out. The agent already in the field
    pulls it, verifies it, swaps it with MCUboot, and confirms or rolls back.
 
-Two independent signatures protect every update — see Security below.
+Two independent signatures protect every update - see Security below.
 
 ## Quickstart
 
@@ -75,14 +75,14 @@ See `samples/sensor-node/` for a complete buildable example.
 1. In the Meshanics panel, create a **product** for your device family. The panel
    produces a **provisioning bundle** (control-plane address + server CA + a
    one-time, provisioning-scoped claim credential). You never hand-edit keys.
-2. Build your firmware (`west build`) — the image is **generic**; it carries no
+2. Build your firmware (`west build`) - the image is **generic**; it carries no
    tenant secrets.
 3. Flash the device: **WebSerial straight from the panel** (no toolchain), or
    over USB. The flasher writes your image **and** the provisioning bundle into a
    data partition.
 4. On first boot the device **generates its own key pair**, enrolls, and receives
    a unique identity + the update-verification key over the authenticated channel
-   (see Security). It then appears in your fleet — no per-device hand-provisioning.
+   (see Security). It then appears in your fleet - no per-device hand-provisioning.
 
 ## Updating the fleet
 
@@ -94,14 +94,14 @@ device polls -> verifies -> downloads -> MCUboot swap -> confirm | rollback
 
 ## Security (read `docs/SECURITY-AND-PROVISIONING.md`)
 
-- **Your MCUboot image-signing key** — yours. Its public half is fused into the
+- **Your MCUboot image-signing key** - yours. Its public half is fused into the
   bootloader at first flash, so **only firmware you built can boot your devices**.
-- **The Meshanics manifest key** — ours, per-tenant. The device verifies every
+- **The Meshanics manifest key** - ours, per-tenant. The device verifies every
   update authorization against the tenant public key, which is **provisioned at
   enrollment, not baked into your image**.
 - **Root of trust** is established out-of-band (a tiny anchor in the provisioning
   bundle), never fetched unauthenticated at runtime.
-- **Verifiable** — the manifest key is Meshanics's, and its `key_id` is published
+- **Verifiable** - the manifest key is Meshanics's, and its `key_id` is published
   on the **Trust Center**. Cross-check the `key_id` your device reports against the
   Trust page to confirm it trusts the genuine key. Trust is auditable, not asserted.
 
